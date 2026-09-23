@@ -73,7 +73,7 @@ def oauth_callback(
     Exchanges the code for tokens, saves them, then redirects to frontend.
     """
     # Determine frontend URL
-    frontend_url = "http://localhost:5173"
+    frontend_url = settings.FRONTEND_URL
 
     if error:
         logger.warning(f"OAuth denied for state={state}: {error}")

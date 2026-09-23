@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     
     # CORS Configuration
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173"
+    FRONTEND_URL: str = "http://localhost:3000"
 
     @property
     def cors_origins_list(self) -> list[str]:
