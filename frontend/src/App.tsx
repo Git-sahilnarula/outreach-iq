@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -10,21 +10,44 @@ import GmailSettings from './pages/GmailSettings';
 import Automations from './pages/Automations';
 import Layout from './components/Layout';
 
+const ProtectedRoute = () => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return <Layout />;
+};
+
+const PublicRoute = ({ children }: { children: React.ReactNode }) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <>{children}</>;
+};
+
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    setIsAuthenticated(!!token);
-  }, []);
-
   return (
     <Router>
       <Routes>
-        <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} />
-        <Route path="/register" element={!isAuthenticated ? <Register /> : <Navigate to="/dashboard" />} />
-        <Route path="/" element={isAuthenticated ? <Layout /> : <Navigate to="/login" />}>
-          <Route index element={<Navigate to="/dashboard" />} />
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <PublicRoute>
+              <Register />
+            </PublicRoute>
+          }
+        />
+        <Route path="/" element={<ProtectedRoute />}>
+          <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="profile" element={<Profile />} />
           <Route path="jobs/new" element={<JobInput />} />
@@ -34,6 +57,7 @@ function App() {
           {/* Phase 7: Automations & Webhooks */}
           <Route path="automations" element={<Automations />} />
         </Route>
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Router>
   );
