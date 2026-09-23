@@ -1,0 +1,161 @@
+{
+  "name": "Outreach IQ Events to Slack / Discord Notifications",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "outreach-iq",
+        "options": {}
+      },
+      "id": "22222222-3333-4444-5555-666666666661",
+      "name": "Outreach IQ Webhook Receiver",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "outreach-iq-receiver"
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{$json.body.event}}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "job.high_match"
+            },
+            {
+              "value2": "proposal.ready"
+            },
+            {
+              "value2": "outreach.sent"
+            }
+          ]
+        }
+      },
+      "id": "22222222-3333-4444-5555-666666666662",
+      "name": "Route by Event Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const event = $input.first().json.body;\nconst data = event.data;\nreturn [{\n  json: {\n    channel: \"#leads-outreach\",\n    text: `🔥 *High Match Job Discovered:* ${data.title} (${data.company || 'Unknown'})\\n🎯 *Score:* ${data.match_score}/100\\n💡 *Recommendation:* ${data.recommendation || 'Review opportunity'}\\n👉 <http://localhost:5173/jobs/${data.job_id}|Review & Generate Proposal in Outreach IQ>`\n  }\n}];"
+      },
+      "id": "22222222-3333-4444-5555-666666666663",
+      "name": "Format High Match Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "const event = $input.first().json.body;\nconst data = event.data;\nreturn [{\n  json: {\n    channel: \"#leads-outreach\",\n    text: `📝 *Proposal Ready for Approval:* ${data.title}\\n🔖 *Version:* v${data.version} (${data.tone} tone)\\n💰 *Estimated Budget:* ${data.estimated_budget || 'Flexible'}\\n👉 <http://localhost:5173/jobs/${data.job_id}|Review Proposal Draft>`\n  }\n}];"
+      },
+      "id": "22222222-3333-4444-5555-666666666664",
+      "name": "Format Proposal Ready Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const event = $input.first().json.body;\nconst data = event.data;\nconst recipient = data.recipient_email || data.recipient_name || 'Prospect';\nreturn [{\n  json: {\n    channel: \"#leads-outreach\",\n    text: `🚀 *Outreach Dispatched!*\\n📡 *Channel:* ${data.channel.toUpperCase()}\\n👤 *Target:* ${recipient}\\n📌 *Subject / Role:* ${data.subject || data.recipient_role || 'Outreach'}\\n👉 <http://localhost:5173/jobs/${data.job_id}|View Job Detail>`\n  }\n}];"
+      },
+      "id": "22222222-3333-4444-5555-666666666665",
+      "name": "Format Outreach Sent Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL || 'https://hooks.slack.com/services/REPLACE/WITH/YOUR_SLACK_WEBHOOK' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": {{ JSON.stringify($json.text) }}\n}",
+        "options": {}
+      },
+      "id": "22222222-3333-4444-5555-666666666666",
+      "name": "Send Slack Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [980, 300]
+    }
+  ],
+  "connections": {
+    "Outreach IQ Webhook Receiver": {
+      "main": [
+        [
+          {
+            "node": "Route by Event Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Event Type": {
+      "main": [
+        [
+          {
+            "node": "Format High Match Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Proposal Ready Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Outreach Sent Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format High Match Message": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Proposal Ready Message": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Outreach Sent Message": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

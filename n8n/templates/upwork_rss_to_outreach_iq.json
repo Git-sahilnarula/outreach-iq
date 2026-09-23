@@ -1,0 +1,109 @@
+{
+  "name": "Upwork RSS to Outreach IQ Ingestion",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "11111111-2222-3333-4444-555555555551",
+      "name": "Schedule Trigger (Every 15m)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://www.upwork.com/ab/feed/jobs/rss?q=fullstack+ai+python+react&sort=recency",
+        "options": {}
+      },
+      "id": "11111111-2222-3333-4444-555555555552",
+      "name": "Fetch Upwork RSS Feed",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nreturn items.map(item => {\n  const rawDesc = item.json.contentSnippet || item.json.content || item.json.description || '';\n  // Extract budget if mentioned in Upwork format\n  const budgetMatch = rawDesc.match(/Budget:\\s*\\$([0-9,]+)/i) || rawDesc.match(/Hourly Range:\\s*(\\$[0-9.-]+)/i);\n  const budget = budgetMatch ? budgetMatch[0] : 'See description';\n  \n  return {\n    json: {\n      title: item.json.title ? item.json.title.replace(/ - Upwork$/i, '').trim() : 'Upwork Lead',\n      description: rawDesc,\n      source: 'upwork_rss',\n      source_job_id: item.json.guid || item.json.link || '',\n      budget: budget,\n      client_name: 'Upwork Client',\n      metadata: {\n        link: item.json.link,\n        pubDate: item.json.pubDate\n      }\n    }\n  };\n});"
+      },
+      "id": "11111111-2222-3333-4444-555555555553",
+      "name": "Clean & Format Upwork Lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/webhooks/jobs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Token",
+              "value": "={{ $env.OUTREACH_IQ_WEBHOOK_TOKEN || 'REPLACE_WITH_YOUR_OUTREACH_IQ_TOKEN' }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"title\": {{ JSON.stringify($json.title) }},\n  \"description\": {{ JSON.stringify($json.description) }},\n  \"source\": {{ JSON.stringify($json.source) }},\n  \"source_job_id\": {{ JSON.stringify($json.source_job_id) }},\n  \"budget\": {{ JSON.stringify($json.budget) }},\n  \"client_name\": {{ JSON.stringify($json.client_name) }},\n  \"metadata\": {{ JSON.stringify($json.metadata) }}\n}",
+        "options": {}
+      },
+      "id": "11111111-2222-3333-4444-555555555554",
+      "name": "Post Lead to Outreach IQ",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger (Every 15m)": {
+      "main": [
+        [
+          {
+            "node": "Fetch Upwork RSS Feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Upwork RSS Feed": {
+      "main": [
+        [
+          {
+            "node": "Clean & Format Upwork Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean & Format Upwork Lead": {
+      "main": [
+        [
+          {
+            "node": "Post Lead to Outreach IQ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

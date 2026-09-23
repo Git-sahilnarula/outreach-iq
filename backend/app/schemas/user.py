@@ -1,0 +1,34 @@
+from pydantic import BaseModel, EmailStr, field_validator, ConfigDict
+from datetime import datetime
+from typing import Optional
+
+class UserBase(BaseModel):
+    name: str
+    email: str
+    
+    @field_validator('email')
+    @classmethod
+    def email_must_be_valid(cls, v):
+        if '@' not in v:
+            raise ValueError('must be a valid email')
+        return v
+
+class UserCreate(UserBase):
+    password: str
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+class UserResponse(UserBase):
+    id: int
+    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
